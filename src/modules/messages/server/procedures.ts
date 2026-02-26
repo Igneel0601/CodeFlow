@@ -210,20 +210,14 @@ export const messagesRouter = createTRPCRouter({
       const files = fragment.files as Record<string, string>;
       const sandbox = await getOrReviveSandbox(fragment.message.project, files);
 
-      // Update project sandboxId in case we created a new sandbox
       await prisma.project.update({
         where: { id: fragment.message.project.id },
         data: { sandboxId: sandbox.sandboxId },
       });
 
-      // Create a tar.gz archive in the sandbox and read it as base64 in one shot
       const archiveResult = await sandbox.commands.run(
-        "tar czf /tmp/project.tar.gz -C /home/user --exclude='node_modules' --exclude='.next' --exclude='.git' --exclude='nextjs-app' --exclude='.cache' . && base64 -w 0 /tmp/project.tar.gz"
+        "tar czf /tmp/project.tar.gz -C /home/user --exclude=node_modules --exclude=.next --exclude=.git --exclude=nextjs-app --exclude=.cache --exclude='.wh.*' . && base64 -w 0 /tmp/project.tar.gz"
       );
-
-      if (archiveResult.exitCode !== 0) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create archive" });
-      }
 
       return { archive: archiveResult.stdout.trim(), projectName: fragment.message.project.name };
     }),
