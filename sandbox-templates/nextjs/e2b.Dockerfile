@@ -15,5 +15,14 @@ RUN npx --yes create-next-app@15.3.3 . --yes
 RUN npx --yes shadcn@2.6.3 init --yes -b neutral --force
 RUN npx --yes shadcn@2.6.3 add --all --yes
 
-# Move the Nextjs app to the home directory and remove the nextjs-app directory
-RUN mv /home/user/nextjs-app/* /home/user/ && rm -rf /home/user/nextjs-app
+# Move the Nextjs app to the home directory (including hidden files) and remove the nextjs-app directory
+RUN cp -a /home/user/nextjs-app/. /home/user/ && rm -rf /home/user/nextjs-app
+
+# Switch to final working directory and install additional packages
+WORKDIR /home/user
+
+RUN npm install tw-animate-css tailwind-merge clsx --yes
+
+# Create lib/utils.ts if shadcn didn't generate it
+RUN mkdir -p /home/user/lib && \
+    printf 'import { clsx, type ClassValue } from "clsx"\nimport { twMerge } from "tailwind-merge"\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs))\n}\n' > /home/user/lib/utils.ts
