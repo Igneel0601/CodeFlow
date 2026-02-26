@@ -74,6 +74,22 @@ export const codeAgentFunction = inngest.createFunction(
       return sandbox.sandboxId;
     });
 
+    const existingFiles = await step.run("get-existing-files", async () => {
+      const lastMessage = await prisma.message.findFirst({
+        where: {
+          projectId: event.data.projectId,
+          fragment: { isNot: null },
+        },
+        include: { fragment: true },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (lastMessage?.fragment?.files) {
+        return lastMessage.fragment.files as Record<string, string>;
+      }
+      return null;
+    });
+
     const previousMessages = await step.run("get-previous-messages", async () => {
       const formattedMessages: Message[] = [];
 
@@ -101,7 +117,7 @@ export const codeAgentFunction = inngest.createFunction(
     const state = createState<AgentState>(
       {
         summary: "",
-        files: {},
+        files: existingFiles ?? {},
       },
       {
         messages: previousMessages,
@@ -241,7 +257,18 @@ export const codeAgentFunction = inngest.createFunction(
       },
     });
 
-    const result = await network.run(event.data.value, { state });
+    let userPrompt = event.data.value;
+
+    if (existingFiles) {
+      const fileList = Object.keys(existingFiles).join(", ");
+      userPrompt = `IMPORTANT: This is a follow-up request on an EXISTING project. The sandbox already contains working code. You MUST read the existing files first using readFiles, then modify only what is needed. Do NOT regenerate or rewrite the entire project from scratch.
+
+Existing files in the sandbox: ${fileList}
+
+User request: ${event.data.value}`;
+    }
+
+    const result = await network.run(userPrompt, { state });
 
     const fragmentTitleGenerator = createAgent({
       name: "fragment-title-generator",

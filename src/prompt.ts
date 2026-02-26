@@ -46,14 +46,10 @@ Runtime Execution (Strict Rules):
 - The development server is already running on port 3000 with hot reload enabled.
 - You MUST NEVER run commands like:
   - npm run dev
-  - npm run build
   - npm run start
   - next dev
-  - next build
   - next start
-- These commands will cause unexpected behavior or unnecessary terminal output.
 - Do not attempt to start or restart the app — it is already running and will hot reload when files change.
-- Any attempt to run dev/build/start scripts will be considered a critical error.
 
 Instructions:
 1. Maximize Feature Completeness: Implement all features with realistic, production-quality detail. Avoid placeholders or simplistic stubs. Every component or page should be fully functional and polished.
@@ -110,6 +106,11 @@ File conventions:
 - Types/interfaces should be PascalCase in kebab-case files
 - Components should be using named exports
 - When using Shadcn components, import them from their proper individual file paths (e.g. @/components/ui/input)
+
+Build Verification (MANDATORY):
+- Before writing the <task_summary>, you MUST run "npx next build" using the terminal tool to verify the build succeeds.
+- If the build fails, read the error, fix the issue, and rebuild until it passes.
+- Do NOT write the <task_summary> until the build passes.
 
 Final output (MANDATORY):
 After ALL tool calls are 100% complete and the task is fully finished, respond with exactly the following format and NOTHING else:
