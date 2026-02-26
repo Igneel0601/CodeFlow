@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { Suspense, useState } from "react";
-import { EyeIcon, CodeIcon, CrownIcon } from "lucide-react";
+import { EyeIcon, CodeIcon, CrownIcon, DownloadIcon, LoaderIcon } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 
 import { Fragment } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { UserControl } from "@/components/user-control";
+import { useTRPC } from "@/trpc/client";
 import { FileExplorer } from "@/components/file-explorer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -31,6 +33,21 @@ export const ProjectView = ({ projectId }: Props) => {
 
   const [activeFragment, setActiveFragment] = useState<Fragment | null>(null);
   const [tabState, setTabState] = useState<"preview" | "code">("preview");
+
+  const trpc = useTRPC();
+
+  const download = useMutation(trpc.messages.download.mutationOptions({
+    onSuccess: async (data) => {
+      const bytes = Uint8Array.from(atob(data.archive), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/gzip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${data.projectName}.tar.gz`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  }));
 
   return (
     <div className="h-screen">
@@ -75,6 +92,22 @@ export const ProjectView = ({ projectId }: Props) => {
                   <CodeIcon /> <span>Code</span>
                 </TabsTrigger>
               </TabsList>
+              {activeFragment && (
+                <Button
+                  size="sm"
+                  variant="tertiary"
+                  className="ml-2"
+                  disabled={download.isPending}
+                  onClick={() => download.mutate({ fragmentId: activeFragment.id })}
+                >
+                  {download.isPending ? (
+                    <LoaderIcon className="animate-spin" />
+                  ) : (
+                    <DownloadIcon />
+                  )}
+                  <span>{download.isPending ? "Preparing..." : "Download"}</span>
+                </Button>
+              )}
               <div className="ml-auto flex items-center gap-x-2">
                 {!hasProAccess && (
                   <Button asChild size="sm" variant="tertiary">
