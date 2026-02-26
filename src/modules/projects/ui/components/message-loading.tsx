@@ -45,13 +45,13 @@ export const MessageLoading = ({ onStop }: MessageLoadingProps) => {
     <div className="flex flex-col group px-2 pb-4">
       <div className="flex items-center gap-2 pl-2 mb-2">
         <Image
-          src="/logo.svg"
-          alt="Vibe"
+          src="/logo.png"
+          alt="CodeFlow"
           width={18}
           height={18}
           className="shrink-0"
         />
-        <span className="text-sm font-medium">Vibe</span>
+        <span className="text-sm font-medium">CodeFlow</span>
       </div>
       <div className="pl-8.5 flex items-center gap-x-3">
         <ShimmerMessages />
