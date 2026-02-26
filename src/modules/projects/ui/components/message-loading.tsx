@@ -1,5 +1,8 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { SquareIcon } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 const ShimmerMessages = () => {
   const messages = [
@@ -33,7 +36,11 @@ const ShimmerMessages = () => {
   );
 };
 
-export const MessageLoading = () => {
+interface MessageLoadingProps {
+  onStop?: () => void;
+}
+
+export const MessageLoading = ({ onStop }: MessageLoadingProps) => {
   return (
     <div className="flex flex-col group px-2 pb-4">
       <div className="flex items-center gap-2 pl-2 mb-2">
@@ -46,8 +53,19 @@ export const MessageLoading = () => {
         />
         <span className="text-sm font-medium">Vibe</span>
       </div>
-      <div className="pl-8.5 flex flex-col gap-y-4">
+      <div className="pl-8.5 flex items-center gap-x-3">
         <ShimmerMessages />
+        {onStop && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onStop}
+            className="h-7 px-2 text-xs gap-1"
+          >
+            <SquareIcon className="size-3 fill-current" />
+            Stop
+          </Button>
+        )}
       </div>
     </div>
   );
