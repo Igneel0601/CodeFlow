@@ -208,7 +208,7 @@ export const codeAgentFunction = inngest.createFunction(
           parameters: z.object({
             files: z.array(z.string()),
           }),
-          handler: async ({ files }, { step }) => {
+          handler: async ({ files }, { step, network }: Tool.Options<AgentState>) => {
             return await step?.run("readFiles", async () => {
               try {
                 const sandbox = await getSandbox(sandboxId);
@@ -216,6 +216,9 @@ export const codeAgentFunction = inngest.createFunction(
                 for (const file of files) {
                   const content = await sandbox.files.read(file);
                   contents.push({ path: file, content });
+                  // Sync state with actual sandbox content so saved fragment stays up-to-date
+                  const relativePath = file.replace(/^\/home\/user\//, "");
+                  network.state.data.files[relativePath] = content;
                 }
                 return JSON.stringify(contents);
               } catch (e) {
