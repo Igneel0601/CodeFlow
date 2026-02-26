@@ -8,6 +8,29 @@ import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { consumeCredits } from "@/lib/usage";
 import { SANDBOX_TIMEOUT } from "@/inngest/types";
 
+async function getOrReviveSandbox(project: { sandboxId: string | null }, fragmentFiles: Record<string, string>) {
+  // Try to reconnect to existing sandbox
+  if (project.sandboxId) {
+    try {
+      const sandbox = await Sandbox.connect(project.sandboxId);
+      await sandbox.setTimeout(SANDBOX_TIMEOUT);
+      return sandbox;
+    } catch {
+      // Sandbox expired, create a new one below
+    }
+  }
+
+  // Create a new sandbox and restore files
+  const sandbox = await Sandbox.create("codeflow");
+  await sandbox.setTimeout(SANDBOX_TIMEOUT);
+
+  for (const [path, content] of Object.entries(fragmentFiles)) {
+    await sandbox.files.write(path, content);
+  }
+
+  return sandbox;
+}
+
 export const messagesRouter = createTRPCRouter({
   getMany: protectedProcedure
   .input(
@@ -144,13 +167,8 @@ export const messagesRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Fragment not found" });
       }
 
-      const sandbox = await Sandbox.create("codeflow");
-      await sandbox.setTimeout(SANDBOX_TIMEOUT);
-
       const files = fragment.files as Record<string, string>;
-      for (const [path, content] of Object.entries(files)) {
-        await sandbox.files.write(path, content);
-      }
+      const sandbox = await getOrReviveSandbox(fragment.message.project, files);
 
       const host = sandbox.getHost(3000);
       const sandboxUrl = `https://${host}`;
@@ -166,5 +184,47 @@ export const messagesRouter = createTRPCRouter({
       });
 
       return { sandboxUrl };
+    }),
+  download: protectedProcedure
+    .input(
+      z.object({
+        fragmentId: z.string().min(1, { message: "Fragment ID is required" }),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const fragment = await prisma.fragment.findUnique({
+        where: { id: input.fragmentId },
+        include: {
+          message: {
+            include: {
+              project: true,
+            },
+          },
+        },
+      });
+
+      if (!fragment || fragment.message.project.userId !== ctx.auth.userId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Fragment not found" });
+      }
+
+      const files = fragment.files as Record<string, string>;
+      const sandbox = await getOrReviveSandbox(fragment.message.project, files);
+
+      // Update project sandboxId in case we created a new sandbox
+      await prisma.project.update({
+        where: { id: fragment.message.project.id },
+        data: { sandboxId: sandbox.sandboxId },
+      });
+
+      // Create a tar.gz archive in the sandbox and read it as base64 in one shot
+      const archiveResult = await sandbox.commands.run(
+        "tar czf /tmp/project.tar.gz -C /home/user --exclude='node_modules' --exclude='.next' --exclude='.git' --exclude='nextjs-app' --exclude='.cache' . && base64 -w 0 /tmp/project.tar.gz"
+      );
+
+      if (archiveResult.exitCode !== 0) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create archive" });
+      }
+
+      return { archive: archiveResult.stdout.trim(), projectName: fragment.message.project.name };
     }),
 });
