@@ -14,8 +14,8 @@ const Page = () => {
       <section className="space-y-6 pt-[16vh] 2xl:pt-48">
         <div className="flex flex-col items-center">
           <Image 
-            src="/logo.svg"
-            alt="Vibe"
+            src="/logo.png"
+            alt="CodeFlow"
             width={50}
             height={50}
             className="hidden md:block"
