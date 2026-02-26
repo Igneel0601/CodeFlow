@@ -84,4 +84,40 @@ export const messagesRouter = createTRPCRouter({
 
       return createdMessage;
     }),
+  cancel: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string().min(1, { message: "Project ID is required" }),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const existingProject = await prisma.project.findUnique({
+        where: {
+          id: input.projectId,
+          userId: ctx.auth.userId,
+        },
+      });
+
+      if (!existingProject) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      }
+
+      await inngest.send({
+        name: "code-agent/cancel",
+        data: {
+          projectId: input.projectId,
+        },
+      });
+
+      await prisma.message.create({
+        data: {
+          projectId: input.projectId,
+          content: "Generation was stopped.",
+          role: "ASSISTANT",
+          type: "ERROR",
+        },
+      });
+
+      return { success: true };
+    }),
 });

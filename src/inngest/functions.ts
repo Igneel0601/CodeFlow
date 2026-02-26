@@ -9,18 +9,68 @@ import { inngest } from "./client";
 import { SANDBOX_TIMEOUT } from "./types";
 import { getSandbox, lastAssistantTextMessageContent, parseAgentOutput } from "./utils";
 
+const geminiBaseUrl = process.env.gemini_base_url ?? process.env.GEMINI_BASE_URL;
+const geminiApiKey = process.env.gemini_api_key ?? process.env.GEMINI_API_KEY;
+
+const codeModel = process.env.AI_CODE_MODEL ?? "gpt-4.1";
+const titleModel = process.env.AI_TITLE_MODEL ?? "gpt-4o";
+const responseModel = process.env.AI_RESPONSE_MODEL ?? "gpt-4o";
+
 interface AgentState {
   summary: string;
   files: { [path: string]: string };
 };
 
 export const codeAgentFunction = inngest.createFunction(
-  { id: "code-agent" },
+  {
+    id: "code-agent",
+    cancelOn: [{ event: "code-agent/cancel", match: "data.projectId" }],
+  },
   { event: "code-agent/run" },
   async ({ event, step }) => {
-    const sandboxId = await step.run("get-sandbox-id", async () => {
-      const sandbox = await Sandbox.create("vibe-nextjs-test-2");
+    const sandboxId = await step.run("get-or-create-sandbox", async () => {
+      const project = await prisma.project.findUniqueOrThrow({
+        where: { id: event.data.projectId },
+        include: {
+          messages: {
+            where: { fragment: { isNot: null } },
+            include: { fragment: true },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      });
+
+      // Try to reconnect to existing sandbox
+      if (project.sandboxId) {
+        try {
+          const sandbox = await Sandbox.connect(project.sandboxId);
+          await sandbox.setTimeout(SANDBOX_TIMEOUT);
+          return sandbox.sandboxId;
+        } catch {
+          // Sandbox expired, will create a new one below
+        }
+      }
+
+      // Create a new sandbox
+      const sandbox = await Sandbox.create("codeflow");
       await sandbox.setTimeout(SANDBOX_TIMEOUT);
+
+      // Restore files from last fragment if available
+      const lastFragment = project.messages[0]?.fragment;
+      if (lastFragment?.files) {
+        const files = lastFragment.files as Record<string, string>;
+        for (const [path, content] of Object.entries(files)) {
+          await sandbox.files.write(path, content);
+        }
+      }
+
+      // Save sandboxId to project
+      await prisma.project.update({
+        where: { id: event.data.projectId },
+        data: { sandboxId: sandbox.sandboxId },
+      });
+
       return sandbox.sandboxId;
     });
 
@@ -62,8 +112,10 @@ export const codeAgentFunction = inngest.createFunction(
       name: "code-agent",
       description: "An expert coding agent",
       system: PROMPT,
-      model: openai({ 
-        model: "gpt-4.1",
+      model: openai({
+        model: codeModel,
+        baseUrl: geminiBaseUrl,
+        apiKey: geminiApiKey,
         defaultParameters: {
           temperature: 0.1,
         },
@@ -195,8 +247,10 @@ export const codeAgentFunction = inngest.createFunction(
       name: "fragment-title-generator",
       description: "A fragment title generator",
       system: FRAGMENT_TITLE_PROMPT,
-      model: openai({ 
-        model: "gpt-4o",
+      model: openai({
+        model: titleModel,
+        baseUrl: geminiBaseUrl,
+        apiKey: geminiApiKey,
       }),
     })
 
@@ -204,8 +258,10 @@ export const codeAgentFunction = inngest.createFunction(
       name: "response-generator",
       description: "A response generator",
       system: RESPONSE_PROMPT,
-      model: openai({ 
-        model: "gpt-4o",
+      model: openai({
+        model: responseModel,
+        baseUrl: geminiBaseUrl,
+        apiKey: geminiApiKey,
       }),
     });
 

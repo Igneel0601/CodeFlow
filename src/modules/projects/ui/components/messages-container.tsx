@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 
 import { useTRPC } from "@/trpc/client";
 import { Fragment } from "@/generated/prisma";
@@ -28,6 +28,8 @@ export const MessagesContainer = ({
   }, {
     refetchInterval: 2000,
   }));
+
+  const cancelGeneration = useMutation(trpc.messages.cancel.mutationOptions());
 
   useEffect(() => {
     const lastAssistantMessage = messages.findLast(
@@ -66,7 +68,11 @@ export const MessagesContainer = ({
               type={message.type}
             />
           ))}
-          {isLastMessageUser && <MessageLoading />}
+          {isLastMessageUser && (
+            <MessageLoading
+              onStop={() => cancelGeneration.mutate({ projectId })}
+            />
+          )}
           <div ref={bottomRef} />
         </div>
       </div>

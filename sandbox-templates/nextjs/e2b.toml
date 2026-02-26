@@ -1,0 +1,17 @@
+# This is a config for E2B sandbox template.
+# You can use template ID (ob32epap1xd5gu8miqba) or template name (codeflow) to create a sandbox:
+
+# Python SDK
+# from e2b import Sandbox, AsyncSandbox
+# sandbox = Sandbox.create("codeflow") # Sync sandbox
+# sandbox = await AsyncSandbox.create("codeflow") # Async sandbox
+
+# JS SDK
+# import { Sandbox } from 'e2b'
+# const sandbox = await Sandbox.create('codeflow')
+
+team_id = "ba83060b-8137-4eb7-98fa-29624fecd2b9"
+start_cmd = "/compile_page.sh"
+dockerfile = "e2b.Dockerfile"
+template_name = "codeflow"
+template_id = "ob32epap1xd5gu8miqba"
