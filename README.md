@@ -138,6 +138,4 @@ npm run lint           # Run ESLint
 5. **File Management**: Users can browse generated files with syntax highlighting
 6. **Iteration**: Conversational development allows for refinements and additions
 
----
 
-Created by [CodeWithAntonio](https://codewithantonio.com)
