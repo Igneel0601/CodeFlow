@@ -99,7 +99,7 @@ export const ProjectView = ({ projectId }: Props) => {
                   variant="tertiary"
                   className="ml-2"
                   disabled={download.isPending}
-                  onClick={() => download.mutate({ fragmentId: activeFragment.id })}
+                  onClick={() => download.mutate({ fragmentId: activeFragment!.id })}
                 >
                   {download.isPending ? (
                     <LoaderIcon className="animate-spin" />
