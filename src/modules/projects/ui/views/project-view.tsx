@@ -92,7 +92,8 @@ export const ProjectView = ({ projectId }: Props) => {
                   <CodeIcon /> <span>Code</span>
                 </TabsTrigger>
               </TabsList>
-              {activeFragment && (
+              {/* Download button hidden — functionality preserved via download mutation */}
+              {false && activeFragment && (
                 <Button
                   size="sm"
                   variant="tertiary"
