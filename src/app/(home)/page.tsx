@@ -9,15 +9,15 @@ const Page = () => {
       <section className="space-y-6 py-[16vh] 2xl:py-48">
         <div className="flex flex-col items-center">
           <Image
-            src="/logo.svg"
-            alt="Vibe"
+            src="/logo.png"
+            alt="CodeFlow"
             width={50}
             height={50}
             className="hidden md:block"
           />
         </div>
         <h1 className="text-2xl md:text-5xl font-bold text-center">
-          Build something with Vibe
+          Build something with CodeFlow
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground text-center">
           Create apps and websites by chatting with AI

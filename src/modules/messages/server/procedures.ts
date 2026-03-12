@@ -1,10 +1,35 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { Sandbox } from "@e2b/code-interpreter";
 
 import { prisma } from "@/lib/db";
 import { inngest } from "@/inngest/client";
 import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { consumeCredits } from "@/lib/usage";
+import { SANDBOX_TIMEOUT } from "@/inngest/types";
+
+async function getOrReviveSandbox(project: { sandboxId: string | null }, fragmentFiles: Record<string, string>) {
+  // Try to reconnect to existing sandbox
+  if (project.sandboxId) {
+    try {
+      const sandbox = await Sandbox.connect(project.sandboxId);
+      await sandbox.setTimeout(SANDBOX_TIMEOUT);
+      return sandbox;
+    } catch {
+      // Sandbox expired, create a new one below
+    }
+  }
+
+  // Create a new sandbox and restore files
+  const sandbox = await Sandbox.create("codeflow");
+  await sandbox.setTimeout(SANDBOX_TIMEOUT);
+
+  for (const [path, content] of Object.entries(fragmentFiles)) {
+    await sandbox.files.write(path, content);
+  }
+
+  return sandbox;
+}
 
 export const messagesRouter = createTRPCRouter({
   getMany: protectedProcedure
@@ -119,5 +144,81 @@ export const messagesRouter = createTRPCRouter({
       });
 
       return { success: true };
+    }),
+  revive: protectedProcedure
+    .input(
+      z.object({
+        fragmentId: z.string().min(1, { message: "Fragment ID is required" }),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const fragment = await prisma.fragment.findUnique({
+        where: { id: input.fragmentId },
+        include: {
+          message: {
+            include: {
+              project: true,
+            },
+          },
+        },
+      });
+
+      if (!fragment || fragment.message.project.userId !== ctx.auth.userId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Fragment not found" });
+      }
+
+      const files = fragment.files as Record<string, string>;
+      const sandbox = await getOrReviveSandbox(fragment.message.project, files);
+
+      const host = sandbox.getHost(3000);
+      const sandboxUrl = `https://${host}`;
+
+      await prisma.fragment.update({
+        where: { id: fragment.id },
+        data: { sandboxUrl },
+      });
+
+      await prisma.project.update({
+        where: { id: fragment.message.project.id },
+        data: { sandboxId: sandbox.sandboxId },
+      });
+
+      return { sandboxUrl };
+    }),
+  download: protectedProcedure
+    .input(
+      z.object({
+        fragmentId: z.string().min(1, { message: "Fragment ID is required" }),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const fragment = await prisma.fragment.findUnique({
+        where: { id: input.fragmentId },
+        include: {
+          message: {
+            include: {
+              project: true,
+            },
+          },
+        },
+      });
+
+      if (!fragment || fragment.message.project.userId !== ctx.auth.userId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Fragment not found" });
+      }
+
+      const files = fragment.files as Record<string, string>;
+      const sandbox = await getOrReviveSandbox(fragment.message.project, files);
+
+      await prisma.project.update({
+        where: { id: fragment.message.project.id },
+        data: { sandboxId: sandbox.sandboxId },
+      });
+
+      const archiveResult = await sandbox.commands.run(
+        "tar czf /tmp/project.tar.gz -C /home/user --exclude=node_modules --exclude=.next --exclude=.git --exclude=nextjs-app --exclude=.cache --exclude='.wh.*' . && base64 -w 0 /tmp/project.tar.gz"
+      );
+
+      return { archive: archiveResult.stdout.trim(), projectName: fragment.message.project.name };
     }),
 });
