@@ -9,12 +9,35 @@ import { inngest } from "./client";
 import { SANDBOX_TIMEOUT } from "./types";
 import { getSandbox, lastAssistantTextMessageContent, parseAgentOutput } from "./utils";
 
+// Set AI_PROVIDER=gemini in your .env to route requests through Gemini's OpenAI-compatible API.
+// Defaults to native OpenAI (uses OPENAI_API_KEY automatically).
+const AI_PROVIDER = process.env.AI_PROVIDER ?? "openai";
+
+// OpenAI reasoning effort: "low" | "medium" | "high" (applies to o-series and gpt-5+ reasoning models).
+// Leave unset to omit the parameter entirely.
+const AI_REASONING_EFFORT = process.env.AI_REASONING_EFFORT as "low" | "medium" | "high" | undefined;
+
 const geminiBaseUrl = process.env.gemini_base_url ?? process.env.GEMINI_BASE_URL;
 const geminiApiKey = process.env.gemini_api_key ?? process.env.GEMINI_API_KEY;
 
-const codeModel = process.env.AI_CODE_MODEL ?? "gpt-4.1";
-const titleModel = process.env.AI_TITLE_MODEL ?? "gpt-4o";
-const responseModel = process.env.AI_RESPONSE_MODEL ?? "gpt-4o";
+const AI_TEMPERATURE = process.env.AI_TEMPERATURE ? parseFloat(process.env.AI_TEMPERATURE) : undefined;
+
+const codeModel = process.env.AI_CODE_MODEL ?? "gpt-5-nano";
+const titleModel = process.env.AI_TITLE_MODEL ?? "gpt-5-nano";
+const responseModel = process.env.AI_RESPONSE_MODEL ?? "gpt-5-nano";
+
+/** Returns the appropriate model config based on AI_PROVIDER. */
+function getModel(model: string, defaultParameters?: Record<string, unknown>) {
+  const params = {
+    ...(AI_PROVIDER === "openai" && AI_REASONING_EFFORT ? { reasoning_effort: AI_REASONING_EFFORT } : {}),
+    ...(AI_TEMPERATURE !== undefined ? { temperature: AI_TEMPERATURE } : {}),
+    ...defaultParameters,
+  };
+  if (AI_PROVIDER === "gemini") {
+    return openai({ model, baseUrl: geminiBaseUrl, apiKey: geminiApiKey, defaultParameters: params });
+  }
+  return openai({ model, defaultParameters: params });
+}
 
 interface AgentState {
   summary: string;
@@ -128,14 +151,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "code-agent",
       description: "An expert coding agent",
       system: PROMPT,
-      model: openai({
-        model: codeModel,
-        baseUrl: geminiBaseUrl,
-        apiKey: geminiApiKey,
-        defaultParameters: {
-          temperature: 0.1,
-        },
-      }),
+      model: getModel(codeModel),
       tools: [
         createTool({
           name: "terminal",
@@ -275,22 +291,14 @@ User request: ${event.data.value}`;
       name: "fragment-title-generator",
       description: "A fragment title generator",
       system: FRAGMENT_TITLE_PROMPT,
-      model: openai({
-        model: titleModel,
-        baseUrl: geminiBaseUrl,
-        apiKey: geminiApiKey,
-      }),
+      model: getModel(titleModel),
     })
 
     const responseGenerator = createAgent({
       name: "response-generator",
       description: "A response generator",
       system: RESPONSE_PROMPT,
-      model: openai({
-        model: responseModel,
-        baseUrl: geminiBaseUrl,
-        apiKey: geminiApiKey,
-      }),
+      model: getModel(responseModel),
     });
 
     const { 
