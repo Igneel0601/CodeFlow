@@ -133,7 +133,10 @@ npm run lint
 
 <!-- Screenshot: split-pane interface showing chat, live preview, and file explorer -->
 <p align="center">
-  <img src="public/screenshot_ui.png" alt="Codeflow Split Pane Screenshot" width="100%" />
+  <img src="public/screenshot_preview_ui.png" alt="Codeflow Split Pane Screenshot" width="100%" />
+</p>
+<p align="center">
+  <img src="public/screenshot_code_ui.png" alt="Codeflow Split Pane Screenshot" width="100%" />
 </p>
 
 1. **Project Creation** — Users describe what they want to build
