@@ -3,7 +3,8 @@
 AI-powered development platform that lets you build web applications by chatting with AI agents running in real-time E2B sandboxes.
 
 <!-- Demo GIF: record the full loop — type a prompt → agent runs → live preview updates -->
-![Demo](public/demo.gif)
+https://github.com/user-attachments/assets/4f9563da-a0a9-4fae-9ea7-c4584c2007b2
+
 
 ## Features
 
