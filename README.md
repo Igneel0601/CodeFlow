@@ -132,7 +132,9 @@ npm run lint
 ## How It Works
 
 <!-- Screenshot: split-pane interface showing chat, live preview, and file explorer -->
-![Split-pane UI](public/screenshot-ui.png)
+<p align="center">
+  <img src="public/screenshot_ui.png" alt="Codeflow Split Pane Screenshot" width="100%" />
+</p>
 
 1. **Project Creation** — Users describe what they want to build
 2. **AI Processing** — Messages are picked up by Inngest background jobs
