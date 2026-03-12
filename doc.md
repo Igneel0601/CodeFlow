@@ -1,10 +1,8 @@
-# Vibe - AI-Powered Development Platform
+# CodeFlow - AI-Powered Development Platform
 
-> An AI-powered development platform that enables users to create web applications through conversational interactions with AI agents. The platform generates Next.js applications in real-time sandboxes, providing live preview and code inspection capabilities.
+> An AI-powered development platform that enables users to build web applications through conversational interactions with AI agents. The platform generates Next.js applications in real-time E2B sandboxes, providing live preview and code inspection capabilities.
 
-**Creator**: CodeWithAntonio
-**Version**: 0.1.0
-**Repository**: https://github.com/AntonioErdeljac/nextjs-vibe
+**Repository**: https://github.com/Igneel0601/CodeFlow
 
 ---
 
@@ -31,14 +29,14 @@
 
 | Category | Technology |
 |----------|-----------|
-| **Framework** | Next.js 15 (App Router) |
+| **Framework** | Next.js 16 (App Router) |
 | **Language** | TypeScript 5 |
 | **UI** | React 19, Shadcn/UI, Radix UI |
 | **Styling** | Tailwind CSS v4 (OKLCH color space) |
 | **API** | tRPC 11 (type-safe) |
 | **Database** | PostgreSQL + Prisma 6 |
 | **Auth** | Clerk (auth + subscriptions) |
-| **AI** | OpenAI GPT-4 / GPT-4o |
+| **AI** | OpenAI (default) or Gemini — model & provider configurable via env |
 | **Sandbox** | E2B Code Interpreter |
 | **Background Jobs** | Inngest 3 + Agent Kit |
 | **Data Fetching** | TanStack React Query |
@@ -74,6 +72,7 @@ src/
 │   ├── code-view/index.tsx           # Syntax highlighting
 │   ├── file-explorer.tsx             # File tree + code viewer
 │   ├── tree-view.tsx                 # File tree component
+│   ├── particles-background.tsx      # Animated particles background
 │   ├── user-control.tsx              # Clerk UserButton wrapper
 │   └── hint.tsx                      # Tooltip component
 ├── modules/                          # Feature modules
@@ -108,7 +107,9 @@ src/
 │   └── use-mobile.ts
 ├── middleware.ts                      # Clerk route protection
 ├── prompt.ts                         # AI system prompts
-└── types.ts                          # Global types
+├── types.ts                          # Global types
+└── generated/
+    └── prisma/                       # Auto-generated Prisma client (do not edit)
 
 prisma/
 └── schema.prisma                     # Database schema
@@ -134,6 +135,8 @@ sandbox-templates/nextjs/
 - **Preview tab**: Live iframe of generated app, refresh, copy URL, open in new tab
 - **Code tab**: File tree explorer + syntax-highlighted code viewer with breadcrumbs
 - **Message cards**: Distinct user/AI styling, timestamps on hover, error highlighting
+- **Cancel**: Stop an in-progress generation mid-run
+- **Download**: Export generated project as a `.tar.gz` archive (excludes node_modules/.next)
 
 ### Authentication & Billing
 - Clerk-powered sign-in/sign-up (email, Google, GitHub, etc.)
@@ -150,7 +153,7 @@ sandbox-templates/nextjs/
 ```
 User Input → tRPC Mutation → Database → Inngest Background Job
                                               ↓
-                                    AI Agent Network (GPT-4)
+                                    AI Agent Network (configurable model)
                                     ├─ Terminal Tool (bash commands)
                                     ├─ File Creation Tool
                                     └─ File Read Tool
@@ -177,9 +180,10 @@ User Input → tRPC Mutation → Database → Inngest Background Job
 ### Background Jobs (Inngest)
 - `codeAgentFunction` triggered by `code-agent/run` event
 - Multi-agent network using Inngest Agent Kit:
-  1. **Code Agent** (GPT-4.1, temp 0.1) — generates code, runs terminal commands, manages files
-  2. **Title Generator** (GPT-4o) — creates fragment titles
-  3. **Response Generator** (GPT-4o) — creates user-facing summaries
+  1. **Code Agent** (default: `gpt-5-nano`, configurable via `AI_CODE_MODEL`) — generates code, runs terminal commands, manages files
+  2. **Title Generator** (default: `gpt-5-nano`, configurable via `AI_TITLE_MODEL`) — creates fragment titles
+  3. **Response Generator** (default: `gpt-5-nano`, configurable via `AI_RESPONSE_MODEL`) — creates user-facing summaries
+- Provider switched via `AI_PROVIDER=openai|gemini`; temperature via `AI_TEMPERATURE`; reasoning effort via `AI_REASONING_EFFORT`
 
 ### E2B Sandbox
 - Pre-built Docker image with Node 21, Next.js 15.3.3, all Shadcn/UI components
@@ -262,7 +266,7 @@ model Usage {
 
 The AI code generation uses three specialized agents orchestrated by Inngest Agent Kit:
 
-### 1. Code Agent (GPT-4.1, temperature 0.1)
+### 1. Code Agent (default: gpt-5-nano, configurable)
 - **System prompt** defined in `src/prompt.ts` with strict rules:
   - Tailwind-only styling (no CSS files)
   - No `npm build/dev/start` commands
@@ -271,10 +275,10 @@ The AI code generation uses three specialized agents orchestrated by Inngest Age
   - All Shadcn/UI components are pre-installed
 - **Tools**: Terminal execution, file creation/update, file reading
 
-### 2. Title Generator (GPT-4o)
+### 2. Title Generator (default: gpt-5-nano, configurable)
 - Generates a short title for the created fragment
 
-### 3. Response Generator (GPT-4o)
+### 3. Response Generator (default: gpt-5-nano, configurable)
 - Creates a user-facing summary of what was built/changed
 
 ---
@@ -292,7 +296,10 @@ The AI code generation uses three specialized agents orchestrated by Inngest Age
 | Procedure | Type | Description |
 |-----------|------|-------------|
 | `getMany` | Query | Get messages for a project (with ownership check) |
-| `create` | Mutation | Add message to project, trigger AI |
+| `create` | Mutation | Add message to project, consume credit, trigger AI |
+| `cancel` | Mutation | Cancel in-progress generation, send cancel event to Inngest, create error message |
+| `revive` | Mutation | Reconnect a fragment to a live sandbox (or spin up a new one), update sandbox URL |
+| `download` | Mutation | Revive sandbox if needed, tar.gz the project files (excluding node_modules/.next), return base64-encoded archive |
 
 ### Usage Router (`src/modules/usage/server/procedures.ts`)
 | Procedure | Type | Description |
@@ -343,13 +350,29 @@ The AI code generation uses three specialized agents orchestrated by Inngest Age
 
 ```bash
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/vibe"
+DATABASE_URL="postgresql://user:password@localhost:5432/codeflow"
 
 # App URL
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
+# AI Provider: "openai" (default) or "gemini"
+AI_PROVIDER=openai
+
 # OpenAI
 OPENAI_API_KEY="sk-..."
+
+# Gemini (OpenAI-compatible, only needed if AI_PROVIDER=gemini)
+GEMINI_BASE_URL="..."
+GEMINI_API_KEY="..."
+
+# AI model overrides (all default to gpt-5-nano)
+# AI_CODE_MODEL=gpt-5-nano
+# AI_TITLE_MODEL=gpt-5-nano
+# AI_RESPONSE_MODEL=gpt-5-nano
+
+# AI tuning (optional)
+# AI_TEMPERATURE=0.1
+# AI_REASONING_EFFORT=medium   # low | medium | high — for o-series and gpt-5+ reasoning models
 
 # E2B Sandbox
 E2B_API_KEY="..."
@@ -386,7 +409,7 @@ npx prisma db push   # Push schema to database
 - PostgreSQL database
 - E2B account (sandbox execution)
 - Clerk account (authentication & subscriptions)
-- OpenAI API key (AI code generation)
+- OpenAI API key (or Gemini credentials if using `AI_PROVIDER=gemini`)
 - Inngest account (background job processing)
 
 ### Recommended Platform
@@ -409,6 +432,7 @@ npx prisma db push   # Push schema to database
 | `src/modules/messages/server/procedures.ts` | Message API |
 | `src/modules/usage/server/procedures.ts` | Usage/credits API |
 | `src/app/layout.tsx` | Root layout with all providers |
+| `src/app/logo.png` | App logo (used in layout/navbar) |
 | `src/middleware.ts` | Clerk route protection |
 | `src/components/file-explorer.tsx` | File tree + code viewer |
 | `src/modules/projects/ui/components/fragment-web.tsx` | Live preview iframe |
