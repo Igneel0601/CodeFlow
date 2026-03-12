@@ -17,9 +17,9 @@ export const UserControl = ({ showName }: Props) => {
       showName={showName}
       appearance={{
         elements: {
-          userButtonBox: "rounded-md!",
-          userButtonAvatarBox: "rounded-md! size-8!",
-          userButtonTrigger: "rounded-md!"
+          userButtonBox: "rounded-full!",
+          userButtonAvatarBox: "rounded-full! size-8!",
+          userButtonTrigger: "rounded-full!"
         },
         baseTheme: currentTheme === "dark" ? dark : undefined,
       }}

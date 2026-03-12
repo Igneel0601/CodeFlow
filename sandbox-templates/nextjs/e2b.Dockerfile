@@ -21,7 +21,7 @@ RUN cp -a /home/user/nextjs-app/. /home/user/ && rm -rf /home/user/nextjs-app
 # Switch to final working directory and install additional packages
 WORKDIR /home/user
 
-RUN npm install tw-animate-css tailwind-merge clsx --yes
+RUN npm install tw-animate-css tailwindcss-animate tailwind-merge clsx --yes
 
 # Create lib/utils.ts if shadcn didn't generate it
 RUN mkdir -p /home/user/lib && \
