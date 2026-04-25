@@ -2,7 +2,7 @@
 
 AI-powered development platform that lets you build web applications by chatting with AI agents running in real-time E2B sandboxes.
 
-![Demo](public/demo.gif)
+<img src="public/demo.gif" alt="Demo" width="100%" />
 
 ## Features
 
@@ -132,11 +132,11 @@ npm run lint
 
 **Live Preview**
 
-![Preview UI](public/screenshot_preview_ui.png)
+<img src="public/screenshot_preview_ui.png" alt="Preview UI" width="100%" />
 
 **Code View**
 
-![Code UI](public/screenshot_code_ui.png)
+<img src="public/screenshot_code_ui.png" alt="Code UI" width="100%" />
 
 1. **Project Creation** — Users describe what they want to build
 2. **AI Processing** — Messages are picked up by Inngest background jobs
