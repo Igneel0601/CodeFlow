@@ -2,8 +2,9 @@
 
 AI-powered development platform that lets you build web applications by chatting with AI agents running in real-time E2B sandboxes.
 
-<!-- Demo GIF: record the full loop — type a prompt → agent runs → live preview updates -->
-![Demo](public/demo.gif)
+https://github.com/Igneel0601/CodeFlow/raw/main/public/demo.mp4
+
+<video src="https://github.com/Igneel0601/CodeFlow/raw/main/public/demo.mp4" controls width="100%"></video>
 
 ## Features
 
@@ -131,8 +132,13 @@ npm run lint
 
 ## How It Works
 
-<!-- Screenshot: split-pane interface showing chat, live preview, and file explorer -->
-![Split-pane UI](public/screenshot-ui.png)
+**Live Preview**
+
+![Preview UI](public/screenshot_preview_ui.png)
+
+**Code View**
+
+![Code UI](public/screenshot_code_ui.png)
 
 1. **Project Creation** — Users describe what they want to build
 2. **AI Processing** — Messages are picked up by Inngest background jobs
