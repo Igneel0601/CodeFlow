@@ -2,9 +2,7 @@
 
 AI-powered development platform that lets you build web applications by chatting with AI agents running in real-time E2B sandboxes.
 
-https://github.com/Igneel0601/CodeFlow/raw/main/public/demo.mp4
-
-<video src="https://github.com/Igneel0601/CodeFlow/raw/main/public/demo.mp4" controls width="100%"></video>
+![Demo](public/demo.gif)
 
 ## Features
 
